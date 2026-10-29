@@ -4,22 +4,22 @@ import { Pressable, RefreshControl } from 'react-native';
 import { YStack, XStack, Text, ScrollView, View } from 'tamagui';
 
 import { useTranslation } from 'react-i18next';
-import { Check, Clock } from '@tamagui/lucide-icons';
 
 import UserAvatar from '@/shared/ui/UserAvatar';
 import { useSessionsHistoryStore } from '@/features/sessions/model/history.store';
 import { getSettlementSummary } from '@/features/sessions/lib/settlement';
+import { SettlementBadge } from '@/features/sessions/ui/SettlementBadge';
 import type { SessionHistoryEntry, SessionHistoryParticipantLight } from '@/features/sessions/api/history.api';
 
 const BULLET = '\u2022';
 const HISTORY_LIMIT = 50;
 const DEFAULT_CURRENCY = 'UZS';
 
-const formatSessionDate = (value?: string) => {
+const formatSessionDate = (value: string | undefined, locale: string) => {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('uz-UZ', {
+  return date.toLocaleString(locale, {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -58,19 +58,6 @@ function AvatarGroup({ participants }: { participants: SessionHistoryParticipant
           <Text fontSize={10} color="$gray11">+{extra}</Text>
         </View>
       )}
-    </XStack>
-  );
-}
-
-function SettlementBadge({ settled, label }: { settled: boolean; label: string }) {
-  const color = settled ? '#2ECC71' : '#F39C12';
-  const Icon = settled ? Check : Clock;
-  return (
-    <XStack ai="center" gap="$1" px="$2" py={2} br={12} backgroundColor={`${color}1A`}>
-      <Icon size={12} color={color} />
-      <Text fontSize={11} fontWeight="600" color={color}>
-        {label}
-      </Text>
     </XStack>
   );
 }
@@ -128,7 +115,7 @@ function HistoryCard({
 
 export default function SessionsHistoryScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const sessions = useSessionsHistoryStore(state => state.sessions);
   const loading = useSessionsHistoryStore(state => state.loading);
   const initialized = useSessionsHistoryStore(state => state.initialized);
@@ -170,13 +157,12 @@ export default function SessionsHistoryScreen() {
         }
       >
         <YStack w={358} gap="$1" mb="$2">
-          <Text fontSize={24} fontWeight="700">Oxirgi hisoblar</Text>
-          <Text fontSize={12} color="$gray10">Bosh sahifa</Text>
+          <Text fontSize={24} fontWeight="700">{t('home.recent.title', 'Recent bills')}</Text>
         </YStack>
 
         {loading && (
           <Text color="$gray10" fontSize={14}>
-            Yuklanmoqda...
+            {t('home.recent.loading', 'Loading recent bills...')}
           </Text>
         )}
         {error && (
@@ -186,14 +172,17 @@ export default function SessionsHistoryScreen() {
         )}
         {!loading && !error && !history.length && (
           <Text color="$gray10" fontSize={14}>
-            Hali tarix mavjud emas
+            {t('home.recent.empty', 'No bills yet')}
           </Text>
         )}
 
         {history.map((bill) => {
           const participants = bill.participants ?? [];
           const dateForSummary = bill.finalizedAt || bill.createdAt;
-          const summary = `${formatSessionDate(dateForSummary)} ${BULLET} ${participants.length} ishtirokchi`;
+          const summary = `${formatSessionDate(dateForSummary, i18n.language)} ${BULLET} ${t(
+            'settlement.participants',
+            { count: participants.length }
+          )}`;
           const totalAmount = bill.grandTotal ?? 0;
           const currency = bill.currency || bill.totals?.currency || bill.payload?.totals?.currency || DEFAULT_CURRENCY;
           const amountLabel = `${currency} ${totalAmount.toLocaleString()}`;
@@ -212,7 +201,7 @@ export default function SessionsHistoryScreen() {
           return (
             <HistoryCard
               key={bill.sessionId}
-              title={bill.sessionName || 'Hisob'}
+              title={bill.sessionName || t('home.recent.fallbackName', 'Bill')}
               summary={summary}
               amountLabel={amountLabel}
               participants={participants}

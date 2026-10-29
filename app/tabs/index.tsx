@@ -10,6 +10,8 @@ import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import UserAvatar from '@/shared/ui/UserAvatar';
 import type { SessionHistoryEntry } from '@/features/sessions/api/history.api';
 import { useSessionsHistoryStore } from '@/features/sessions/model/history.store';
+import { getSettlementSummary } from '@/features/sessions/lib/settlement';
+import { SettlementBadge } from '@/features/sessions/ui/SettlementBadge';
 
 const HOME_HISTORY_LIMIT = 10;
 const DEFAULT_CURRENCY = 'UZS';
@@ -62,17 +64,19 @@ function ActionButton({
   );
 }
 
-function AvatarStack({ participantIds }: { participantIds: string[] }) {
-  const shown = participantIds.slice(0, 3);
-  const extra = Math.max(0, participantIds.length - shown.length);
+type AvatarParticipant = { uniqueId: string; username?: string };
+
+function AvatarStack({ participants }: { participants: AvatarParticipant[] }) {
+  const shown = participants.slice(0, 3);
+  const extra = Math.max(0, participants.length - shown.length);
 
   return (
     <XStack w={92} h={28} ai="center">
-      {shown.map((uniqueId, i) => (
+      {shown.map(({ uniqueId, username }, i) => (
         <View key={uniqueId ?? i} ml={i === 0 ? 0 : -8}>
           <UserAvatar
             uri={undefined}
-            label={(uniqueId || 'U').slice(0, 2).toUpperCase()}
+            label={(username || uniqueId || 'U').slice(0, 1).toUpperCase()}
             size={28}
             textSize={12}
             backgroundColor="$gray5"
@@ -104,13 +108,15 @@ function BillCard({
   title,
   sub,
   amountLabel,
-  participantIds,
+  participants,
+  settlement,
   onPress,
 }: {
   title: string;
   sub: string;
   amountLabel: string;
-  participantIds: string[];
+  participants: AvatarParticipant[];
+  settlement?: { settled: boolean; label: string };
   onPress?: () => void;
 }) {
   return (
@@ -144,8 +150,9 @@ function BillCard({
           </Text>
         </XStack>
 
-        <XStack mt="auto" ai="center">
-          <AvatarStack participantIds={participantIds} />
+        <XStack mt="auto" ai="center" jc="space-between">
+          <AvatarStack participants={participants} />
+          {settlement && <SettlementBadge settled={settlement.settled} label={settlement.label} />}
         </XStack>
       </YStack>
     </Pressable>
@@ -277,6 +284,21 @@ export default function HomePage() {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             })} ${currency}`;
+            const settlementSummary = getSettlementSummary(bill);
+            const settlement =
+              settlementSummary.debtorCount > 0
+                ? {
+                    settled: settlementSummary.allSettled,
+                    label: settlementSummary.allSettled
+                      ? t('settlement.allSettled')
+                      : t('settlement.unpaidCount', {
+                          count: settlementSummary.debtorCount - settlementSummary.paidCount,
+                        }),
+                  }
+                : undefined;
+            const avatarParticipants: AvatarParticipant[] = bill.participants?.length
+              ? bill.participants
+              : participantIds.map(uniqueId => ({ uniqueId }));
 
             return (
               <BillCard
@@ -284,7 +306,8 @@ export default function HomePage() {
                 title={bill.sessionName || t('home.recent.fallbackName', 'Bill')}
                 sub={summary}
                 amountLabel={amountLabel}
-                participantIds={participantIds}
+                participants={avatarParticipants}
+                settlement={settlement}
                 onPress={() =>
                   router.push({
                     pathname: '/tabs/sessions/history/[historyId]',
