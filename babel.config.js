@@ -4,7 +4,9 @@ module.exports = function (api) {
   const isProduction = process.env.NODE_ENV === 'production';
   
   return {
-    presets: ['babel-preset-expo'],
+    // unstable_transformImportMeta: zustand's ESM build uses import.meta,
+    // which crashes the web bundle ("Cannot use 'import.meta' outside a module")
+    presets: [['babel-preset-expo', { unstable_transformImportMeta: true }]],
     plugins: [
       // removed deprecated 'expo-router/babel' (use 'babel-preset-expo' in SDK 50+)
       // Отключаем Tamagui babel plugin для production сборки
