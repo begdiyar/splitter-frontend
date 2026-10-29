@@ -37,6 +37,7 @@ export type SessionHistoryPayload = {
   totals: {
     byItem: SessionHistoryTotalsByItem[];
     grandTotal: number;
+    currency?: string;
     byParticipant: SessionHistoryTotalsByParticipant[];
   };
   createdAt: string; // ISO
@@ -52,7 +53,12 @@ export interface SessionHistoryEntryRaw {
   sessionName: string;
   finalizedAt: string;
   grandTotal: number;
+  currency?: string;
   participantUniqueIds: string[];
+  /** uniqueId участников, которые уже вернули свою долю (создатель — сразу) */
+  paidUniqueIds?: string[];
+  /** uniqueId создателя сессии — того, кто оплатил счёт */
+  creatorUniqueId?: string;
   isCreator: boolean;
   payload: SessionHistoryPayload;
 }
@@ -71,8 +77,11 @@ export interface SessionHistoryEntry {
   finalizedAt?: string;
   createdAt?: string;
   grandTotal: number;
+  currency?: string;
 
   participantUniqueIds: string[];
+  paidUniqueIds: string[];
+  creatorUniqueId?: string;
 
   totals?: SessionHistoryPayload['totals'];
   allocations?: SessionHistoryAllocation[];
@@ -83,6 +92,12 @@ export interface SessionHistoryEntry {
 }
 
 /** Сырой ответ всего списка */
+/** Ответ PATCH /sessions/{id}/payments */
+export interface SessionPaymentsResponse {
+  sessionId: number;
+  paidUniqueIds: string[];
+}
+
 export interface SessionHistoryResponseRaw {
   scope: 'latest';
   count: number;
@@ -195,6 +210,32 @@ export const SessionsHistoryApi = {
     } finally {
       isLoading = false;
       currentRequest = null;
+    }
+  },
+
+  /**
+   * Отметить долю участника как оплаченную / неоплаченную (только создатель сессии)
+   */
+  async setPaymentStatus(
+    sessionId: number,
+    uniqueId: string,
+    paid: boolean
+  ): Promise<SessionPaymentsResponse> {
+    logReq(`PATCH /sessions/${sessionId}/payments`, { uniqueId, paid });
+    try {
+      const { data } = await apiClient.patch<SessionPaymentsResponse>(
+        `/sessions/${sessionId}/payments`,
+        { uniqueId, paid }
+      );
+      logRes(`response from /sessions/${sessionId}/payments`, data);
+      return data;
+    } catch (error: any) {
+      logErr(`error from /sessions/${sessionId}/payments`, {
+        message: error?.message,
+        status: error?.response?.status,
+        responseData: error?.response?.data,
+      });
+      throw error;
     }
   },
 

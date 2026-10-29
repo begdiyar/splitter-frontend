@@ -25,6 +25,8 @@ type Actions = {
   /** Обновить, только если данные «протухли» */
   refreshIfStale: (maxAgeMs?: number, limit?: number, all?: boolean) => Promise<void>;
   getSession: (sessionId: string | number) => SessionHistoryEntry | undefined;
+  /** Оптимистично отметить участника как оплатившего; откатывает при ошибке */
+  setParticipantPaid: (sessionId: number, uniqueId: string, paid: boolean) => Promise<void>;
   clearError: () => void;
   reset: () => void;
 };
@@ -61,7 +63,10 @@ const normalizeEntry = (raw: SessionHistoryEntryRaw): SessionHistoryEntry => {
     finalizedAt,
     createdAt,
     grandTotal,
+    currency: raw.currency && raw.currency !== 'UNKNOWN' ? raw.currency : p?.totals?.currency,
     participantUniqueIds: raw.participantUniqueIds ?? [],
+    paidUniqueIds: raw.paidUniqueIds ?? [],
+    creatorUniqueId: raw.creatorUniqueId,
     totals: p?.totals,
     allocations: p?.allocations ?? [],
     participants,
@@ -150,6 +155,29 @@ export const useSessionsHistoryStore = create<State & Actions>((set, get) => ({
     const idNumber = typeof sessionId === 'number' ? sessionId : Number(sessionId);
     if (Number.isNaN(idNumber)) return undefined;
     return get().sessions.find(session => session.sessionId === idNumber);
+  },
+
+  async setParticipantPaid(sessionId, uniqueId, paid) {
+    const applyPaid = (ids: string[]) =>
+      set(state => ({
+        sessions: state.sessions.map(session =>
+          session.sessionId === sessionId ? { ...session, paidUniqueIds: ids } : session
+        ),
+      }));
+
+    const previous = get().getSession(sessionId)?.paidUniqueIds ?? [];
+    const optimistic = paid
+      ? Array.from(new Set([...previous, uniqueId]))
+      : previous.filter(id => id !== uniqueId);
+    applyPaid(optimistic);
+
+    try {
+      const response = await SessionsHistoryApi.setPaymentStatus(sessionId, uniqueId, paid);
+      applyPaid(response.paidUniqueIds ?? optimistic);
+    } catch (error) {
+      applyPaid(previous);
+      throw error;
+    }
   },
 
   clearError() {

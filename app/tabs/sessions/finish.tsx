@@ -1,10 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { YStack, XStack, Text, Button, Circle, ScrollView } from 'tamagui';
-import { Check } from '@tamagui/lucide-icons';
+import { useTranslation } from 'react-i18next';
+import { YStack, XStack, Text, Button, Circle, ScrollView, Spinner } from 'tamagui';
+import { Check, Share2 } from '@tamagui/lucide-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { FinalizeTotalsByItem, FinalizeTotalsByParticipant, ReceiptAllocation } from '@/features/receipt/api/receipt.api';
 import { useReceiptSessionStore, type FinishPayload } from '@/features/receipt/model/receipt-session.store';
+import { useSessionsHistoryStore } from '@/features/sessions/model/history.store';
+import { shareBill } from '@/features/sessions/lib/bill-share';
 
 type Participant = { uniqueId: string; username: string };
 
@@ -36,7 +39,10 @@ export default function FinishScreen() {
   const { data } = useLocalSearchParams<{ data?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const lastFinishPayload = useReceiptSessionStore((s) => s.lastFinishPayload);
+  const fetchHistory = useSessionsHistoryStore((s) => s.fetchHistory);
+  const [openingTracker, setOpeningTracker] = useState(false);
 
   const payload = useMemo<FinishPayload | null>(() => {
     if (data) {
@@ -411,6 +417,37 @@ export default function FinishScreen() {
   const showGrandTotal = participantSummaries.length > 0 || itemSummaries.length > 0;
   const grandTotalParts = showGrandTotal ? getCurrencyParts(effectiveGrandTotal, currency) : null;
 
+  const sessionId = payload?.sessionId;
+
+  const onShare = () =>
+    shareBill(
+      {
+        sessionName: sessionName || 'Bill',
+        currency,
+        grandTotal: effectiveGrandTotal,
+        participants: participantSummaries,
+      },
+      t
+    );
+
+  const onTrackPayments = async () => {
+    if (!sessionId) {
+      router.replace('/tabs');
+      return;
+    }
+    setOpeningTracker(true);
+    try {
+      // make sure the freshly finalized bill is in the history store
+      await fetchHistory(50);
+    } finally {
+      setOpeningTracker(false);
+    }
+    router.replace({
+      pathname: '/tabs/sessions/history/[historyId]',
+      params: { historyId: String(sessionId) },
+    });
+  };
+
   const Avatar = ({ name }: { name: string }) => (
     <Circle size={32} bg="$gray5" ai="center" jc="center">
       <Text color="white" fontWeight="700" fontSize={14}>
@@ -615,20 +652,49 @@ export default function FinishScreen() {
         bottom={(insets?.bottom ?? 0) + 8}
         px="$4"
       >
-        <Button
-          unstyled
-          height={41}
-          borderRadius={10}
-          bg="#2ECC71"
-          ai="center"
-          jc="center"
-          onPress={() => router.replace('/tabs')}
-          pressStyle={{ opacity: 0.9 }}
-        >
-          <Text fontSize={16} fontWeight="600" color="white">
-            Complete settlement
-          </Text>
-        </Button>
+        <XStack gap="$2">
+          <Button
+            unstyled
+            height={41}
+            px="$3"
+            borderRadius={10}
+            borderWidth={1}
+            borderColor="#2ECC71"
+            bg="$background"
+            ai="center"
+            jc="center"
+            flexDirection="row"
+            gap="$2"
+            onPress={onShare}
+            disabled={!showGrandTotal}
+            opacity={showGrandTotal ? 1 : 0.5}
+            pressStyle={{ opacity: 0.8 }}
+          >
+            <Share2 size={16} color="#2ECC71" />
+            <Text fontSize={15} fontWeight="600" color="#2ECC71">
+              {t('settlement.share')}
+            </Text>
+          </Button>
+          <Button
+            unstyled
+            f={1}
+            height={41}
+            borderRadius={10}
+            bg="#2ECC71"
+            ai="center"
+            jc="center"
+            flexDirection="row"
+            gap="$2"
+            onPress={onTrackPayments}
+            disabled={openingTracker}
+            pressStyle={{ opacity: 0.9 }}
+          >
+            {openingTracker && <Spinner size="small" color="white" />}
+            <Text fontSize={16} fontWeight="600" color="white">
+              {t('settlement.trackPayments')}
+            </Text>
+          </Button>
+        </XStack>
       </YStack>
     </YStack>
   );

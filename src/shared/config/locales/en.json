@@ -190,5 +190,38 @@
         "uz": "Uzbek"
       }
     }
+  },
+  "settlement": {
+    "progressTitle": "Payments collected",
+    "progressCount": "{{paid}} of {{total}} paid",
+    "collected": "Collected",
+    "remaining": "Remaining",
+    "allSettled": "All settled",
+    "unpaidCount": "{{count}} unpaid",
+    "paid": "Paid",
+    "unpaid": "Unpaid",
+    "payer": "Paid the bill",
+    "markPaid": "Mark as paid",
+    "markUnpaid": "Undo",
+    "youOwe": "You owe {{amount}}",
+    "youPaid": "You have paid",
+    "creatorOnlyHint": "Only the person who paid the bill can mark payments.",
+    "updateFailed": "Could not update payment status. Please try again.",
+    "share": "Share bill",
+    "trackPayments": "Track payments",
+    "back": "Back",
+    "notFound": "Bill not found",
+    "loading": "Loading...",
+    "noItems": "No items assigned",
+    "participants_one": "{{count}} participant",
+    "participants_other": "{{count}} participants",
+    "shareText": {
+      "title": "🧾 {{name}}",
+      "total": "Total: {{amount}}",
+      "perPerson": "Who owes what:",
+      "paidMark": "✅",
+      "unpaidMark": "⏳",
+      "footer": "Sent from Receipt Splitter"
+    }
   }
 }

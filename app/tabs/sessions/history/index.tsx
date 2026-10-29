@@ -3,8 +3,12 @@ import { useRouter } from 'expo-router';
 import { Pressable, RefreshControl } from 'react-native';
 import { YStack, XStack, Text, ScrollView, View } from 'tamagui';
 
+import { useTranslation } from 'react-i18next';
+import { Check, Clock } from '@tamagui/lucide-icons';
+
 import UserAvatar from '@/shared/ui/UserAvatar';
 import { useSessionsHistoryStore } from '@/features/sessions/model/history.store';
+import { getSettlementSummary } from '@/features/sessions/lib/settlement';
 import type { SessionHistoryEntry, SessionHistoryParticipantLight } from '@/features/sessions/api/history.api';
 
 const BULLET = '\u2022';
@@ -58,17 +62,32 @@ function AvatarGroup({ participants }: { participants: SessionHistoryParticipant
   );
 }
 
+function SettlementBadge({ settled, label }: { settled: boolean; label: string }) {
+  const color = settled ? '#2ECC71' : '#F39C12';
+  const Icon = settled ? Check : Clock;
+  return (
+    <XStack ai="center" gap="$1" px="$2" py={2} br={12} backgroundColor={`${color}1A`}>
+      <Icon size={12} color={color} />
+      <Text fontSize={11} fontWeight="600" color={color}>
+        {label}
+      </Text>
+    </XStack>
+  );
+}
+
 function HistoryCard({
   title,
   summary,
   amountLabel,
   participants,
+  settlement,
   onPress,
 }: {
   title: string;
   summary: string;
   amountLabel: string;
   participants: SessionHistoryParticipantLight[];
+  settlement?: { settled: boolean; label: string };
   onPress: () => void;
 }) {
   return (
@@ -98,8 +117,9 @@ function HistoryCard({
           </Text>
         </XStack>
 
-        <XStack mt="auto" ai="center">
+        <XStack mt="auto" ai="center" jc="space-between">
           <AvatarGroup participants={participants} />
+          {settlement && <SettlementBadge settled={settlement.settled} label={settlement.label} />}
         </XStack>
       </YStack>
     </Pressable>
@@ -108,6 +128,7 @@ function HistoryCard({
 
 export default function SessionsHistoryScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const sessions = useSessionsHistoryStore(state => state.sessions);
   const loading = useSessionsHistoryStore(state => state.loading);
   const initialized = useSessionsHistoryStore(state => state.initialized);
@@ -176,6 +197,18 @@ export default function SessionsHistoryScreen() {
           const totalAmount = bill.grandTotal ?? 0;
           const currency = bill.currency || bill.totals?.currency || bill.payload?.totals?.currency || DEFAULT_CURRENCY;
           const amountLabel = `${currency} ${totalAmount.toLocaleString()}`;
+          const settlementSummary = getSettlementSummary(bill);
+          const settlement =
+            settlementSummary.debtorCount > 0
+              ? {
+                  settled: settlementSummary.allSettled,
+                  label: settlementSummary.allSettled
+                    ? t('settlement.allSettled')
+                    : t('settlement.unpaidCount', {
+                        count: settlementSummary.debtorCount - settlementSummary.paidCount,
+                      }),
+                }
+              : undefined;
           return (
             <HistoryCard
               key={bill.sessionId}
@@ -183,6 +216,7 @@ export default function SessionsHistoryScreen() {
               summary={summary}
               amountLabel={amountLabel}
               participants={participants}
+              settlement={settlement}
               onPress={() =>
                 router.push({
                   pathname: '/tabs/sessions/history/[historyId]',

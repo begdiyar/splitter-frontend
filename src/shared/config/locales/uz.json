@@ -177,5 +177,38 @@
         "uz": "O'zbek tili"
       }
     }
+  },
+  "settlement": {
+    "progressTitle": "To'lovlar holati",
+    "progressCount": "{{total}} tadan {{paid}} tasi to'ladi",
+    "collected": "Yig'ildi",
+    "remaining": "Qoldi",
+    "allSettled": "Hammasi to'landi",
+    "unpaidCount": "{{count}} ta to'lanmagan",
+    "paid": "To'landi",
+    "unpaid": "To'lanmagan",
+    "payer": "Hisobni to'lagan",
+    "markPaid": "To'landi deb belgilash",
+    "markUnpaid": "Bekor qilish",
+    "youOwe": "Siz {{amount}} qarzdorsiz",
+    "youPaid": "Siz to'lagansiz",
+    "creatorOnlyHint": "To'lovlarni faqat hisobni to'lagan kishi belgilay oladi.",
+    "updateFailed": "To'lov holatini yangilab bo'lmadi. Qayta urinib ko'ring.",
+    "share": "Ulashish",
+    "trackPayments": "To'lovlarni kuzatish",
+    "back": "Ortga",
+    "notFound": "Hisob topilmadi",
+    "loading": "Yuklanmoqda...",
+    "noItems": "Hech qanday element biriktirilmagan",
+    "participants_one": "{{count}} ishtirokchi",
+    "participants_other": "{{count}} ishtirokchi",
+    "shareText": {
+      "title": "🧾 {{name}}",
+      "total": "Jami: {{amount}}",
+      "perPerson": "Kim qancha to'laydi:",
+      "paidMark": "✅",
+      "unpaidMark": "⏳",
+      "footer": "Receipt Splitter orqali yuborildi"
+    }
   }
 }
